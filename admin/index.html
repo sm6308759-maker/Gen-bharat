@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GenZ Bharat - Admin Portal</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Supabase JS Client SDK v2 -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            saffron: {
+              DEFAULT: '#FF671F',
+              hover: '#E65100',
+              light: '#FFF0EB'
+            },
+            navy: {
+              DEFAULT: '#0A192F',
+              dark: '#020C1B',
+              card: '#112240',
+              border: '#233554'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <!-- Admin Portal Custom CSS -->
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body class="bg-slate-50 text-slate-900 min-h-screen flex flex-col antialiased">
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-3 pointer-events-none"></div>
+
+  <!-- AUTH CONTAINER (Login View) -->
+  <div id="auth-view" class="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-slate-900 via-navy to-slate-950">
+    <div class="max-w-md w-full bg-white rounded-2xl shadow-2xl p-8 border border-slate-100 relative overflow-hidden">
+      <!-- Top Decorator Line -->
+      <div class="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-saffron via-amber-500 to-orange-600"></div>
+
+      <!-- Header -->
+      <div class="text-center mb-8">
+        <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-saffron-light text-saffron mb-4 shadow-inner">
+          <i class="fa-solid fa-shield-halved text-3xl"></i>
+        </div>
+        <h1 class="text-2xl font-bold text-navy tracking-tight">GenZ Bharat Admin</h1>
+        <p class="text-slate-500 text-sm mt-1">Real-Time News & Video Control Center</p>
+      </div>
+
+      <!-- Login Form -->
+      <form id="login-form" class="space-y-5">
+        <div>
+          <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Admin Email</label>
+          <div class="relative">
+            <i class="fa-solid fa-envelope absolute left-3.5 top-3.5 text-slate-400 text-sm"></i>
+            <input type="email" id="login-email" required placeholder="admin@genzbharat.com" 
+              class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-saffron focus:border-saffron text-sm transition font-medium">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Password</label>
+          <div class="relative">
+            <i class="fa-solid fa-lock absolute left-3.5 top-3.5 text-slate-400 text-sm"></i>
+            <input type="password" id="login-password" required placeholder="••••••••" 
+              class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-saffron focus:border-saffron text-sm transition font-medium">
+          </div>
+        </div>
+
+        <div class="pt-2">
+          <button type="submit" id="btn-login" 
+            class="w-full py-3 px-4 bg-saffron hover:bg-saffron-hover text-white font-bold rounded-xl shadow-lg shadow-saffron/25 transition flex items-center justify-center gap-2 text-sm">
+            <i class="fa-solid fa-right-to-bracket"></i>
+            <span>Authenticate Admin</span>
+          </button>
+        </div>
+      </form>
+
+      <!-- Supabase URL Settings Accordion for Custom Projects -->
+      <div class="mt-6 pt-6 border-t border-slate-100">
+        <details class="text-xs text-slate-500 cursor-pointer">
+          <summary class="font-semibold text-slate-700 hover:text-saffron flex items-center justify-between">
+            <span><i class="fa-solid fa-gear mr-1"></i> Supabase Endpoint Configuration</span>
+            <i class="fa-solid fa-chevron-down text-xs"></i>
+          </summary>
+          <div class="mt-3 space-y-3 p-3 bg-slate-50 rounded-xl border border-slate-200 text-left">
+            <div>
+              <label class="block text-[10px] font-bold uppercase text-slate-500 mb-1">Supabase URL</label>
+              <input type="text" id="config-url" placeholder="https://spoyjsyzhpvfknflgdqk.supabase.co" 
+                class="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-mono">
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold uppercase text-slate-500 mb-1">Anon API Key</label>
+              <input type="password" id="config-key" placeholder="eyJhbGciOiJIUzI1NiIsInR5..." 
+                class="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-mono">
+            </div>
+            <button type="button" id="btn-save-config" class="w-full py-1.5 bg-slate-800 hover:bg-slate-900 text-white font-semibold rounded-lg text-xs">
+              Save Config
+            </button>
+          </div>
+        </details>
+      </div>
+
+      <p class="text-center text-slate-400 text-xs mt-6">
+        Protected Portal • Admin Role Authorization Required
+      </p>
+    </div>
+  </div>
+
+  <!-- MAIN ADMIN DASHBOARD APP (Hidden until Auth) -->
+  <div id="app-view" class="hidden min-h-screen flex flex-col md:flex-row">
+
+    <!-- SIDEBAR -->
+    <aside class="w-full md:w-64 bg-navy text-slate-300 flex-shrink-0 flex flex-col justify-between border-r border-navy-border shadow-xl">
+      <div>
+        <!-- Brand Header -->
+        <div class="p-6 border-b border-slate-800 flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-saffron text-white flex items-center justify-center font-black text-xl shadow-md">
+            GZ
+          </div>
+          <div>
+            <h2 class="font-black text-white tracking-wide text-lg leading-none">GenZ Bharat</h2>
+            <span class="text-[11px] text-saffron font-bold uppercase tracking-wider">Admin Console</span>
+          </div>
+        </div>
+
+        <!-- Realtime Status Indicator -->
+        <div class="mx-4 my-4 p-3 bg-slate-900/80 rounded-xl border border-slate-800 flex items-center justify-between text-xs">
+          <div class="flex items-center gap-2">
+            <span class="relative flex h-2.5 w-2.5">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+            </span>
+            <span class="font-medium text-slate-300">Supabase Realtime</span>
+          </div>
+          <span class="text-[10px] text-emerald-400 font-bold px-2 py-0.5 bg-emerald-950/60 rounded border border-emerald-800">LIVE</span>
+        </div>
+
+        <!-- Navigation Links -->
+        <nav class="px-3 space-y-1">
+          <button data-tab="dashboard" class="nav-btn active w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition text-slate-300 hover:bg-slate-800 hover:text-white">
+            <i class="fa-solid fa-chart-pie w-5 text-saffron"></i>
+            <span>Dashboard</span>
+          </button>
+          <button data-tab="news" class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition text-slate-300 hover:bg-slate-800 hover:text-white">
+            <i class="fa-solid fa-newspaper w-5 text-blue-400"></i>
+            <span>News Articles</span>
+          </button>
+          <button data-tab="videos" class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition text-slate-300 hover:bg-slate-800 hover:text-white">
+            <i class="fa-solid fa-video w-5 text-purple-400"></i>
+            <span>Video Stories</span>
+          </button>
+          <button data-tab="breaking" class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition text-slate-300 hover:bg-slate-800 hover:text-white">
+            <i class="fa-solid fa-bolt w-5 text-amber-400"></i>
+            <span>Breaking News</span>
+          </button>
+          <button data-tab="trending" class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition text-slate-300 hover:bg-slate-800 hover:text-white">
+            <i class="fa-solid fa-fire w-5 text-rose-500"></i>
+            <span>Trending in Bharat</span>
+          </button>
+          <button data-tab="categories" class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition text-slate-300 hover:bg-slate-800 hover:text-white">
+            <i class="fa-solid fa-tags w-5 text-teal-400"></i>
+            <span>Categories</span>
+          </button>
+          <button data-tab="users" class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition text-slate-300 hover:bg-slate-800 hover:text-white">
+            <i class="fa-solid fa-users w-5 text-indigo-400"></i>
+            <span>User Management</span>
+          </button>
+          <button data-tab="settings" class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition text-slate-300 hover:bg-slate-800 hover:text-white">
+            <i class="fa-solid fa-sliders w-5 text-slate-400"></i>
+            <span>Settings & API</span>
+          </button>
+        </nav>
+      </div>
+
+      <!-- User Profile & Logout -->
+      <div class="p-4 border-t border-slate-800 bg-slate-950/50">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2.5 truncate">
+            <div class="w-8 h-8 rounded-full bg-saffron text-white flex items-center justify-center font-bold text-xs">
+              <i class="fa-solid fa-user-shield"></i>
+            </div>
+            <div class="truncate">
+              <p id="user-display-email" class="text-xs font-bold text-white truncate">admin@genzbharat.com</p>
+              <span class="text-[10px] text-emerald-400 font-semibold uppercase">Admin Role</span>
+            </div>
+          </div>
+          <button id="btn-logout" title="Sign Out" class="p-2 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded-lg transition">
+            <i class="fa-solid fa-power-off text-sm"></i>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT AREA -->
+    <main class="flex-1 flex flex-col min-w-0 bg-slate-50 overflow-y-auto custom-scrollbar">
+
+      <!-- TOP BAR -->
+      <header class="bg-white border-b border-slate-200 sticky top-0 z-30 px-6 py-4 flex items-center justify-between shadow-sm">
+        <div class="flex items-center gap-3">
+          <h1 id="page-title" class="text-xl font-extrabold text-slate-900 tracking-tight">Dashboard Overview</h1>
+        </div>
+        <div class="flex items-center gap-3">
+          <button id="btn-refresh" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition flex items-center gap-2">
+            <i class="fa-solid fa-arrows-rotate text-xs"></i>
+            <span>Refresh</span>
+          </button>
+          <button data-action="add-news" class="btn-create-news px-4 py-2 bg-saffron hover:bg-saffron-hover text-white text-xs font-bold rounded-xl shadow-md transition flex items-center gap-2">
+            <i class="fa-solid fa-plus"></i>
+            <span>Create News</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- CONTENT SECTIONS -->
+      <div class="p-6 space-y-6">
+
+        <!-- ================= TAB 1: DASHBOARD ================= -->
+        <section id="tab-dashboard" class="tab-content space-y-6">
+          <!-- Overview Cards -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+            
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+              <div class="flex items-center justify-between text-slate-400 mb-2">
+                <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Total News</span>
+                <i class="fa-solid fa-newspaper text-blue-500"></i>
+              </div>
+              <div id="stat-total-news" class="text-2xl font-black text-slate-900">0</div>
+              <span class="text-[11px] text-slate-500 font-medium">Supabase Database</span>
+            </div>
+
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+              <div class="flex items-center justify-between text-slate-400 mb-2">
+                <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Total Videos</span>
+                <i class="fa-solid fa-video text-purple-500"></i>
+              </div>
+              <div id="stat-total-videos" class="text-2xl font-black text-slate-900">0</div>
+              <span class="text-[11px] text-slate-500 font-medium">Short Stories</span>
+            </div>
+
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+              <div class="flex items-center justify-between text-slate-400 mb-2">
+                <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Published</span>
+                <i class="fa-solid fa-check-circle text-emerald-500"></i>
+              </div>
+              <div id="stat-published" class="text-2xl font-black text-emerald-600">0</div>
+              <span class="text-[11px] text-slate-500 font-medium">Active in User App</span>
+            </div>
+
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+              <div class="flex items-center justify-between text-slate-400 mb-2">
+                <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Breaking</span>
+                <i class="fa-solid fa-bolt text-amber-500"></i>
+              </div>
+              <div id="stat-breaking" class="text-2xl font-black text-amber-600">0</div>
+              <span class="text-[11px] text-slate-500 font-medium">Top Banner Stories</span>
+            </div>
+
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+              <div class="flex items-center justify-between text-slate-400 mb-2">
+                <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Trending</span>
+                <i class="fa-solid fa-fire text-rose-500"></i>
+              </div>
+              <div id="stat-trending" class="text-2xl font-black text-rose-600">0</div>
+              <span class="text-[11px] text-slate-500 font-medium">Trending Section</span>
+            </div>
+
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+              <div class="flex items-center justify-between text-slate-400 mb-2">
+                <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Total Users</span>
+                <i class="fa-solid fa-users text-indigo-500"></i>
+              </div>
+              <div id="stat-users" class="text-2xl font-black text-slate-900">0</div>
+              <span class="text-[11px] text-slate-500 font-medium">Registered Readers</span>
+            </div>
+
+          </div>
+
+          <!-- Quick Action Banner -->
+          <div class="bg-gradient-to-r from-navy via-slate-900 to-navy p-6 rounded-2xl text-white shadow-lg flex flex-col md:flex-row items-center justify-between gap-4">
+            <div>
+              <span class="px-2.5 py-1 bg-saffron text-white font-bold text-[10px] uppercase rounded-full tracking-wider">Live Android App Sync</span>
+              <h3 class="text-lg font-bold mt-2">Publish Real-Time Articles & Videos to GenZ Bharat</h3>
+              <p class="text-slate-300 text-xs mt-1">All changes saved here instantly update the live Android app home feed, breaking news ticker, and video stories tab via Supabase Realtime.</p>
+            </div>
+            <div class="flex items-center gap-3 flex-shrink-0">
+              <button class="btn-create-news px-4 py-2.5 bg-saffron hover:bg-saffron-hover text-white text-xs font-bold rounded-xl shadow-md transition">
+                + Create News
+              </button>
+              <button id="btn-create-video-quick" class="px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-xl shadow-md transition">
+                + Add Video Story
+              </button>
+            </div>
+          </div>
+
+          <!-- Recent Articles & Quick Preview -->
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            
+            <!-- Recent News -->
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+              <div class="flex items-center justify-between mb-4">
+                <h4 class="font-bold text-slate-900 text-sm flex items-center gap-2">
+                  <i class="fa-solid fa-newspaper text-saffron"></i>
+                  <span>Recent Articles</span>
+                </h4>
+                <button data-tab="news" class="text-xs text-saffron font-bold hover:underline">View All</button>
+              </div>
+              <div id="recent-news-list" class="space-y-3">
+                <p class="text-xs text-slate-400 italic">Loading news articles...</p>
+              </div>
+            </div>
+
+            <!-- Recent Videos -->
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+              <div class="flex items-center justify-between mb-4">
+                <h4 class="font-bold text-slate-900 text-sm flex items-center gap-2">
+                  <i class="fa-solid fa-video text-purple-500"></i>
+                  <span>Recent Video Stories</span>
+                </h4>
+                <button data-tab="videos" class="text-xs text-purple-600 font-bold hover:underline">View All</button>
+              </div>
+              <div id="recent-videos-list" class="space-y-3">
+                <p class="text-xs text-slate-400 italic">Loading video stories...</p>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+
+        <!-- ================= TAB 2: NEWS MANAGEMENT ================= -->
+        <section id="tab-news" class="tab-content hidden space-y-6">
+          
+          <!-- Filters & Controls -->
+          <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-3 items-center justify-between">
+            <div class="flex flex-1 flex-col sm:flex-row gap-3 w-full">
+              <!-- Search -->
+              <div class="relative flex-1">
+                <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-400 text-xs"></i>
+                <input type="text" id="news-search" placeholder="Search news title or content..." 
+                  class="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-saffron">
+              </div>
+
+              <!-- Category Filter -->
+              <select id="news-filter-category" class="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium">
+                <option value="ALL">All Categories</option>
+                <option value="India">India</option>
+                <option value="World">World</option>
+                <option value="Politics">Politics</option>
+                <option value="Business">Business</option>
+                <option value="Tech">Tech</option>
+                <option value="Entertainment">Entertainment</option>
+                <option value="Sports">Sports</option>
+                <option value="Climate">Climate</option>
+                <option value="Startups">Startups</option>
+              </select>
+
+              <!-- Language Filter -->
+              <select id="news-filter-lang" class="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium">
+                <option value="ALL">All Languages</option>
+                <option value="hi">Hindi (hi)</option>
+                <option value="en">English (en)</option>
+              </select>
+
+              <!-- Status Filter -->
+              <select id="news-filter-status" class="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium">
+                <option value="ALL">All Status</option>
+                <option value="PUBLISHED">Published Only</option>
+                <option value="DRAFT">Drafts Only</option>
+                <option value="BREAKING">Breaking Only</option>
+                <option value="TRENDING">Trending Only</option>
+              </select>
+            </div>
+
+            <button class="btn-create-news px-4 py-2 bg-saffron hover:bg-saffron-hover text-white text-xs font-bold rounded-xl shadow transition whitespace-nowrap">
+              + New Article
+            </button>
+          </div>
+
+          <!-- Articles Table -->
+          <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs">
+                <thead class="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
+                  <tr>
+                    <th class="p-4">Cover & Title</th>
+                    <th class="p-4">Category</th>
+                    <th class="p-4">Region / Lang</th>
+                    <th class="p-4">Badges</th>
+                    <th class="p-4">Status</th>
+                    <th class="p-4">Created At</th>
+                    <th class="p-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="news-table-body" class="divide-y divide-slate-100 font-medium">
+                  <tr>
+                    <td colspan="7" class="p-6 text-center text-slate-400">Loading articles...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+
+        <!-- ================= TAB 3: VIDEO MANAGEMENT ================= -->
+        <section id="tab-videos" class="tab-content hidden space-y-6">
+          <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div class="relative flex-1 w-full">
+              <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-400 text-xs"></i>
+              <input type="text" id="video-search" placeholder="Search video title..." 
+                class="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-purple-500">
+            </div>
+            <button id="btn-create-video" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-xl shadow transition whitespace-nowrap">
+              + Add Video Story
+            </button>
+          </div>
+
+          <!-- Videos Table -->
+          <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs">
+                <thead class="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
+                  <tr>
+                    <th class="p-4">Video & Title</th>
+                    <th class="p-4">Category</th>
+                    <th class="p-4">Region/Lang</th>
+                    <th class="p-4">Badges</th>
+                    <th class="p-4">Status</th>
+                    <th class="p-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="videos-table-body" class="divide-y divide-slate-100 font-medium">
+                  <tr>
+                    <td colspan="6" class="p-6 text-center text-slate-400">Loading videos...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+
+        <!-- ================= TAB 4: BREAKING NEWS ================= -->
+        <section id="tab-breaking" class="tab-content hidden space-y-6">
+          <div class="bg-amber-50 p-4 rounded-2xl border border-amber-200 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center font-bold text-lg">
+                <i class="fa-solid fa-bolt"></i>
+              </div>
+              <div>
+                <h3 class="font-bold text-amber-900 text-sm">Breaking News Manager</h3>
+                <p class="text-amber-700 text-xs">Toggle breaking status ON/OFF. Breaking items appear immediately in the top Android ticker banner.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
+            <h4 class="font-bold text-slate-800 text-sm">Active Breaking Items</h4>
+            <div id="breaking-items-list" class="space-y-3">
+              <p class="text-xs text-slate-400">Loading breaking items...</p>
+            </div>
+          </div>
+        </section>
+
+
+        <!-- ================= TAB 5: TRENDING NEWS ================= -->
+        <section id="tab-trending" class="tab-content hidden space-y-6">
+          <div class="bg-rose-50 p-4 rounded-2xl border border-rose-200 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-rose-500 text-white flex items-center justify-center font-bold text-lg">
+                <i class="fa-solid fa-fire"></i>
+              </div>
+              <div>
+                <h3 class="font-bold text-rose-900 text-sm">Trending in Bharat Manager</h3>
+                <p class="text-rose-700 text-xs">Manage trending articles and videos featured in the Trending feed on the Android app.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
+            <h4 class="font-bold text-slate-800 text-sm">Active Trending Items</h4>
+            <div id="trending-items-list" class="space-y-3">
+              <p class="text-xs text-slate-400">Loading trending items...</p>
+            </div>
+          </div>
+        </section>
+
+
+        <!-- ================= TAB 6: CATEGORIES ================= -->
+        <section id="tab-categories" class="tab-content hidden space-y-6">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- Add Category Form -->
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4 h-fit">
+              <h4 class="font-bold text-slate-900 text-sm">Add New Category</h4>
+              <form id="category-form" class="space-y-3">
+                <div>
+                  <label class="block text-xs font-bold text-slate-600 mb-1">Category Name (English)</label>
+                  <input type="text" id="cat-name-en" required placeholder="e.g. Defense" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs">
+                </div>
+                <div>
+                  <label class="block text-xs font-bold text-slate-600 mb-1">Category Name (Hindi)</label>
+                  <input type="text" id="cat-name-hi" placeholder="e.g. रक्षा" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs">
+                </div>
+                <button type="submit" class="w-full py-2 bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs rounded-xl shadow transition">
+                  Save Category
+                </button>
+              </form>
+            </div>
+
+            <!-- Categories List -->
+            <div class="md:col-span-2 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+              <h4 class="font-bold text-slate-900 text-sm">Active Categories</h4>
+              <div id="categories-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <p class="text-xs text-slate-400 col-span-full">Loading categories...</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+
+        <!-- ================= TAB 7: USERS ================= -->
+        <section id="tab-users" class="tab-content hidden space-y-6">
+          <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-4">
+            <div class="flex items-center justify-between">
+              <h4 class="font-bold text-slate-900 text-sm">Registered Profiles</h4>
+              <span id="user-count-badge" class="px-2.5 py-0.5 bg-indigo-50 text-indigo-700 text-xs font-bold rounded-full border border-indigo-200">0 Users</span>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs">
+                <thead class="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase">
+                  <tr>
+                    <th class="p-3">User / Email</th>
+                    <th class="p-3">Role</th>
+                    <th class="p-3">Joined Date</th>
+                    <th class="p-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="users-table-body" class="divide-y divide-slate-100 font-medium">
+                  <tr>
+                    <td colspan="4" class="p-4 text-center text-slate-400">Loading user profiles...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+
+        <!-- ================= TAB 8: SETTINGS ================= -->
+        <section id="tab-settings" class="tab-content hidden space-y-6">
+          <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-6">
+            <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+              <i class="fa-solid fa-sliders text-saffron"></i>
+              <span>Supabase Backend Credentials</span>
+            </h3>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Supabase Endpoint URL</label>
+                <input type="text" id="settings-url" readonly class="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-xl text-xs font-mono">
+              </div>
+              <div>
+                <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Anon API Key</label>
+                <input type="password" id="settings-key" readonly class="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-xl text-xs font-mono">
+              </div>
+            </div>
+
+            <div class="p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-900 space-y-2">
+              <p class="font-bold flex items-center gap-1.5 text-emerald-800">
+                <i class="fa-solid fa-circle-check"></i> Connected to GenZ Bharat Database
+              </p>
+              <p class="text-emerald-700">Both this Admin Portal and the GenZ Bharat Android App connect to the same Supabase database tables (`news`, `videos`, `profiles`, `categories`).</p>
+            </div>
+
+            <div class="border-t border-slate-200 pt-4">
+              <h4 class="font-bold text-slate-900 text-sm mb-2">Required Supabase Storage Buckets</h4>
+              <p class="text-xs text-slate-500 mb-3">Ensure these public storage buckets are created in your Supabase Dashboard:</p>
+              <div class="flex flex-wrap gap-3">
+                <span class="px-3 py-1.5 bg-slate-100 border border-slate-200 text-slate-700 text-xs font-mono font-bold rounded-lg flex items-center gap-2">
+                  <i class="fa-solid fa-image text-amber-500"></i> news_images (Public)
+                </span>
+                <span class="px-3 py-1.5 bg-slate-100 border border-slate-200 text-slate-700 text-xs font-mono font-bold rounded-lg flex items-center gap-2">
+                  <i class="fa-solid fa-file-video text-purple-500"></i> video_files (Public)
+                </span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- MODAL: ADD/EDIT NEWS ARTICLE -->
+  <div id="modal-news" class="fixed inset-0 z-50 hidden bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden my-auto">
+      
+      <!-- Modal Header -->
+      <div class="p-5 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800">
+        <h3 id="modal-news-title" class="font-bold text-base flex items-center gap-2">
+          <i class="fa-solid fa-newspaper text-saffron"></i>
+          <span>Create News Article</span>
+        </h3>
+        <button class="btn-close-modal text-slate-400 hover:text-white text-lg">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Modal Body (Scrollable) -->
+      <form id="form-news" class="p-6 space-y-4 overflow-y-auto custom-scrollbar flex-1 text-xs">
+        <input type="hidden" id="news-id" value="">
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Article Title *</label>
+          <input type="text" id="news-input-title" required placeholder="Headline title..." 
+            class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-saffron font-semibold">
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Category *</label>
+            <select id="news-input-category" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold">
+              <option value="India">India</option>
+              <option value="World">World</option>
+              <option value="Politics">Politics</option>
+              <option value="Business">Business</option>
+              <option value="Tech">Tech</option>
+              <option value="Entertainment">Entertainment</option>
+              <option value="Sports">Sports</option>
+              <option value="Climate">Climate</option>
+              <option value="Startups">Startups</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Region / State</label>
+            <select id="news-input-region" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold">
+              <option value="Pan India">Pan India</option>
+              <option value="Delhi">Delhi</option>
+              <option value="Maharashtra">Maharashtra</option>
+              <option value="Uttar Pradesh">Uttar Pradesh</option>
+              <option value="Karnataka">Karnataka</option>
+              <option value="Tamil Nadu">Tamil Nadu</option>
+              <option value="West Bengal">West Bengal</option>
+              <option value="Telangana">Telangana</option>
+              <option value="Gujarat">Gujarat</option>
+              <option value="Kerala">Kerala</option>
+              <option value="Punjab">Punjab</option>
+              <option value="Bihar">Bihar</option>
+              <option value="Rajasthan">Rajasthan</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Language</label>
+            <select id="news-input-lang" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold">
+              <option value="hi">Hindi (हिन्दी)</option>
+              <option value="en">English</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Cover Image (Upload File OR Paste Image URL)</label>
+          <div class="flex flex-col sm:flex-row gap-2 items-center">
+            <input type="file" id="news-file-image" accept="image/*" class="text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-saffron-light file:text-saffron hover:file:bg-saffron/20 cursor-pointer">
+            <span class="text-slate-400 font-bold text-xs">OR</span>
+            <input type="url" id="news-input-imageurl" placeholder="https://images.unsplash.com/..." class="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs">
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Short Summary / Description *</label>
+          <textarea id="news-input-desc" rows="2" required placeholder="Brief 2-3 sentence overview..." class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs"></textarea>
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Full Article Content *</label>
+          <textarea id="news-input-content" rows="6" required placeholder="Detailed article text..." class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs"></textarea>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Source Name</label>
+            <input type="text" id="news-input-source" value="GenZ Bharat" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs">
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Author Name</label>
+            <input type="text" id="news-input-author" value="Admin Desk" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs">
+          </div>
+        </div>
+
+        <!-- Controls / Toggles -->
+        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" id="news-toggle-breaking" class="w-4 h-4 text-amber-500 rounded focus:ring-amber-400">
+            <span class="font-bold text-slate-800">🔥 Breaking</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" id="news-toggle-trending" class="w-4 h-4 text-rose-500 rounded focus:ring-rose-400">
+            <span class="font-bold text-slate-800">📈 Trending</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" id="news-toggle-latest" checked class="w-4 h-4 text-blue-500 rounded focus:ring-blue-400">
+            <span class="font-bold text-slate-800">📰 Latest</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" id="news-toggle-published" checked class="w-4 h-4 text-emerald-500 rounded focus:ring-emerald-400">
+            <span class="font-bold text-slate-800">🟢 Published</span>
+          </label>
+        </div>
+
+        <div class="pt-3 flex justify-end gap-3 border-t border-slate-100">
+          <button type="button" class="btn-close-modal px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl">
+            Cancel
+          </button>
+          <button type="submit" id="btn-save-news" class="px-6 py-2 bg-saffron hover:bg-saffron-hover text-white font-bold rounded-xl shadow-md transition flex items-center gap-2">
+            <i class="fa-solid fa-floppy-disk"></i>
+            <span>Save & Publish</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+
+  <!-- MODAL: ADD/EDIT VIDEO STORY -->
+  <div id="modal-video" class="fixed inset-0 z-50 hidden bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden my-auto">
+      
+      <div class="p-5 bg-purple-950 text-white flex items-center justify-between border-b border-purple-900">
+        <h3 id="modal-video-title" class="font-bold text-base flex items-center gap-2">
+          <i class="fa-solid fa-video text-purple-400"></i>
+          <span>Add Video Story</span>
+        </h3>
+        <button class="btn-close-modal text-slate-400 hover:text-white text-lg">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <form id="form-video" class="p-6 space-y-4 overflow-y-auto custom-scrollbar flex-1 text-xs">
+        <input type="hidden" id="video-id" value="">
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Video Title *</label>
+          <input type="text" id="video-input-title" required placeholder="Short video headline..." 
+            class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-purple-500 font-semibold">
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Video Source (Upload Video File OR Direct MP4 URL) *</label>
+          <div class="space-y-2">
+            <input type="file" id="video-file-media" accept="video/*" class="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-purple-100 file:text-purple-700 hover:file:bg-purple-200 cursor-pointer">
+            <input type="url" id="video-input-videourl" placeholder="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs">
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Thumbnail Image (Upload Image OR URL)</label>
+          <div class="space-y-2">
+            <input type="file" id="video-file-thumb" accept="image/*" class="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-purple-100 file:text-purple-700 cursor-pointer">
+            <input type="url" id="video-input-thumburl" placeholder="https://images.unsplash.com/..." class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Category</label>
+            <select id="video-input-category" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold">
+              <option value="General">General</option>
+              <option value="India">India</option>
+              <option value="Politics">Politics</option>
+              <option value="Tech">Tech</option>
+              <option value="Sports">Sports</option>
+              <option value="Entertainment">Entertainment</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Region</label>
+            <select id="video-input-region" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold">
+              <option value="Pan India">Pan India</option>
+              <option value="Delhi">Delhi</option>
+              <option value="Mumbai">Mumbai</option>
+              <option value="Bengaluru">Bengaluru</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Language</label>
+            <select id="video-input-lang" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold">
+              <option value="hi">Hindi</option>
+              <option value="en">English</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Description</label>
+          <textarea id="video-input-desc" rows="3" placeholder="Video summary..." class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs"></textarea>
+        </div>
+
+        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" id="video-toggle-breaking" class="w-4 h-4 text-amber-500 rounded focus:ring-amber-400">
+            <span class="font-bold text-slate-800">🔥 Breaking</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" id="video-toggle-trending" class="w-4 h-4 text-rose-500 rounded focus:ring-rose-400">
+            <span class="font-bold text-slate-800">📈 Trending</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" id="video-toggle-latest" checked class="w-4 h-4 text-blue-500 rounded focus:ring-blue-400">
+            <span class="font-bold text-slate-800">📰 Latest</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" id="video-toggle-published" checked class="w-4 h-4 text-emerald-500 rounded focus:ring-emerald-400">
+            <span class="font-bold text-slate-800">🟢 Published</span>
+          </label>
+        </div>
+
+        <div class="pt-3 flex justify-end gap-3 border-t border-slate-100">
+          <button type="button" class="btn-close-modal px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl">
+            Cancel
+          </button>
+          <button type="submit" id="btn-save-video" class="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl shadow-md transition flex items-center gap-2">
+            <i class="fa-solid fa-floppy-disk"></i>
+            <span>Save Video Story</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+
+  <!-- Main Admin JS Logic -->
+  <script src="admin.js"></script>
+</body>
+</html>

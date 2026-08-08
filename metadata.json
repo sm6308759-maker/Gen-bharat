@@ -1,0 +1,6 @@
+{
+  "name": "GenZ Bharat",
+  "description": "Production-ready AI News App for India featuring Breaking News, AI Article Summaries, Key Takeaways, Regional Filters, and Offline Bookmarks.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
